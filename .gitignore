@@ -1,0 +1,20 @@
+# Build output and test artefacts
+/bin/
+/dist/
+*.test
+*.out
+*.exe
+coverage.txt
+coverage.html
+
+# Secrets: sandbox keys and any local environment file
+.env
+.env.*
+*.env
+
+# IDEs and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

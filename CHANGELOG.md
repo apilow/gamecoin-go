@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to this module are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
+[Semantic Versioning](https://semver.org/).
+
+## [0.1.0] - 2026-10-05
+
+First pre-release.
+
+### Added
+- `gamecoin.New` and a `Client` with `Catalog`, `Players`, `Wallet`, `Ledger`, `Inventory`, `Purchases`, `Checkouts` and
+  `Orders` services covering the whole GameCoin server API v1.
+- `Ext` and `PlayerID` helpers; path segments are URL-encoded exactly once.
+- Idempotency keys on every mutation (UUID v4 generated once per call and kept across retries, or your own through
+  `WithIdempotencyKey`), and a `Replayed` flag on the results.
+- Automatic retries on network errors, timeouts, `5xx` and `429` (exponential backoff with jitter, `Retry-After` honoured
+  up to 30 s). Refunds are retried on `429` only. A cancelled context is never retried.
+- `*gamecoin.Error` with `Code`, `Status`, `Message`, `Details` and `RetryAfter`, the `Code…` constants, `IsCode` and
+  `ErrInvalidArgument` for arguments rejected before any request.
+- `Ledger.Iterate`, a lazy iterator (`Next`, `Entry`, `Err`) that needs no Go newer than 1.21.
+- Strict checking of response shapes (`INVALID_RESPONSE`), standard library only.

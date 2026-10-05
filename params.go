@@ -18,7 +18,7 @@ const (
 // PlayerProfile holds the fields Players.Upsert can set. A nil field leaves the value unchanged; to erase a field, list
 // it in Clear. A field cannot be both set and cleared.
 type PlayerProfile struct {
-	// DisplayName is the display name (200 characters at most).
+	// DisplayName is the display name (80 characters at most).
 	DisplayName *string
 	// Email is the e-mail address.
 	Email *string

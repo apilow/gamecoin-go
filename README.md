@@ -197,6 +197,36 @@ for _, item := range owned {
 }
 ```
 
+### Pack availability
+
+The catalog lists every active pack, including the ones that are scheduled, ended or sold out: your shop decides what to
+show. `Pack.Availability` is `nil` for an ordinary pack (always on sale, no limit); otherwise it tells when the pack is on
+sale and how many units are left (founder packs, limited editions):
+
+```go
+for _, pack := range catalog.Packs {
+	a := pack.Availability
+	if a == nil {
+		continue // always on sale
+	}
+	fmt.Println(pack.SKU, "founder:", a.Founder)
+	if a.StartsAt != nil { // *time.Time, included
+		fmt.Println("  on sale from", a.StartsAt.Format(time.RFC3339))
+	}
+	if a.EndsAt != nil { // excluded
+		fmt.Println("  until", a.EndsAt.Format(time.RFC3339))
+	}
+	if a.Remaining != nil { // nil is an unlimited stock; the stocks of test and live are separate
+		fmt.Println("  units left:", *a.Remaining)
+	}
+}
+if catalog.Prelaunch { // the game is not launched yet: show pre-orders with the launch date
+	if catalog.LaunchAt != nil {
+		fmt.Println("launch on", catalog.LaunchAt.Format(time.RFC3339))
+	}
+}
+```
+
 `Inventory.Consume` returns the item even when it reaches 0. A durable item with `MaxOwned` fails with `LIMIT_REACHED`
 beyond the limit. `Quantity` is optional: its zero value means 1.
 
@@ -212,9 +242,13 @@ checkout, err := client.Checkouts.Create(ctx, player, gamecoin.CheckoutParams{
 	CancelURL:  "https://game.example.com/shop",        // optional
 	Country:    "BE",                                   // optional: the VAT country (server side only)
 	Locale:     "nl",                                   // optional: "fr", "en" or "nl", language of the payment page and e-mails
+	CreatorCode: "LEAPLAY",                             // optional: the creator code the player typed
 })
 check(err)
 fmt.Printf("%s: %d cents (%s), pay at %s\n", checkout.Order.Status, checkout.Order.AmountCents, checkout.Order.Currency, checkout.CheckoutURL)
+if cc := checkout.Order.CreatorCode; cc != nil { // nil when the order has no creator code
+	fmt.Println("creator code", cc.Code, "of", cc.CreatorName)
+}
 
 order, err := client.Orders.Get(ctx, checkout.Order.ID) // poll, or call it when the player comes back
 check(err)
@@ -232,13 +266,59 @@ In test mode the payment is simulated: open `CheckoutURL` and press "Pay (simula
 The API ignores any other value without an error, and an empty `Locale` is not sent. A pending order that the API reuses
 takes the language of the latest request.
 
+`CreatorCode` is the creator code a player typed at checkout: the buyer then gets a bonus of free coins and the creator
+earns a commission, both cancelled on a refund or a chargeback. An empty `CreatorCode` is not sent. A refused code
+(unknown, disabled, not valid for the pack, or the creator's own player) is `VALIDATION_FAILED` with
+`Details["fieldErrors"]["creatorCode"] == ["CODE_INVALID"]`. The order keeps the code: `Order.CreatorCode` (a
+`*OrderCreatorCode` with `Code` and `CreatorName`, `nil` without a code; the rates of the creator are never exposed) also
+travels in the `order.*` webhooks.
+
+A pack can be refused when it is outside its sale window (`PACK_NOT_AVAILABLE`, with `Details["startsAt"]` and
+`Details["endsAt"]` as ISO 8601 text or `nil`) or when its stock is exhausted (`PACK_SOLD_OUT`); see
+[Pack availability](#pack-availability).
+
 **Refunds have no idempotency key**, so the SDK retries `Orders.Refund` on `429` only. After a network error, a timeout
 or a `5xx` it returns the error, and you should check the outcome with `Orders.Get` (status `refunded` or not) before
 trying again.
 
+## Codes
+
+A **gift code** gives a player free coins (always the bonus bucket) and items, once: you make the codes in the dashboard
+(a batch of random codes, or a code for a giveaway), the player types one in your game, and your backend redeems it:
+
+```go
+redemption, err := client.Codes.Redeem(ctx, player, "pgw k7m2q xh4np") // case, spaces and dashes do not matter
+switch {
+case gamecoin.IsCode(err, gamecoin.CodeValidationFailed):
+	fmt.Println("This code is not valid") // unknown, expired, used up, disabled or already used: one answer for all
+case err != nil:
+	check(err)
+default:
+	for _, g := range redemption.Grants {
+		fmt.Println("+", g.Amount, g.Currency, "->", g.Balance.Total)
+	}
+	for _, item := range redemption.Items {
+		fmt.Println("+", item.Quantity, item.SKU)
+	}
+	fmt.Println(len(redemption.Skipped), "item(s) skipped")
+}
+```
+
+- `Codes.Redeem(ctx, player, code, opts...)` sends the code **as it is** (the API ignores case, spaces and dashes, so
+  there is nothing to clean first) and returns a `*Redemption`: `Grants` (`Currency`, `Amount`, and the `Balance` after
+  the credit), `Items` (`SKU`, `Quantity`), `Skipped` (the items the player could not receive) and `Replayed`.
+- Every refusal of the code itself is the same error, `VALIDATION_FAILED` with
+  `Details["fieldErrors"]["code"] == ["CODE_INVALID"]`, so that nothing tells a guess from a real code. It is never
+  retried. `PLAYER_BLOCKED`, `LIMIT_REACHED`, `CONFLICT` (the player can no longer receive what the code holds; the code is
+  not used up then) and `RATE_LIMITED` (attempts are limited) come through the usual error mapping.
+- The call is idempotent like the other writes: it carries an `Idempotency-Key` (generated, or `WithIdempotencyKey`), and a
+  replay returns the same `Redemption` with `Replayed` set, without a second credit.
+
+A **creator code** is something else: it goes in `CheckoutParams.CreatorCode` (see [Checkout](#checkout-orders-and-refunds)).
+
 ## Idempotency and retries
 
-Every call that changes a wallet or an inventory, or creates a checkout, sends an `Idempotency-Key` header. If you give
+Every call that changes a wallet or an inventory, redeems a code, or creates a checkout, sends an `Idempotency-Key` header. If you give
 none, the SDK generates a UUID v4 **once per call** and reuses it for each automatic retry, so a retry can never credit
 twice. To make *your own* retries safe (a job that may run twice), supply a stable key:
 
@@ -254,7 +334,7 @@ fmt.Println(first.Replayed, second.Replayed, first.Entry.ID == second.Entry.ID) 
 ```
 
 `Replayed` is `true` when the API answered with the original response of an earlier request with the same key (header
-`Idempotent-Replayed: true`); it exists on `Movement`, `Purchase`, `Checkout` and `InventoryItem` (the result of
+`Idempotent-Replayed: true`); it exists on `Movement`, `Purchase`, `Checkout`, `Redemption` and `InventoryItem` (the result of
 `Inventory.Grant` and `Inventory.Consume`). The same key with a *different* request fails with `IDEMPOTENCY_CONFLICT`. A
 key is 1 to 100 printable ASCII characters and is kept for 30 days. A replayed checkout returns the order in its
 **current** state.
@@ -304,7 +384,8 @@ case err != nil:
 
 `gamecoin.IsCode(err, code)` is shorthand for the `errors.As` test. The codes are constants: `CodeValidationFailed`,
 `CodeIdempotencyKeyRequired`, `CodeUnauthenticated`, `CodePaymentFailed`, `CodeForbidden`, `CodePlayerBlocked`,
-`CodeEnvNotEnabled`, `CodeNotFound`, `CodeInsufficientFunds`, `CodeLimitReached`, `CodeIdempotencyConflict`, `CodeConflict`,
+`CodeEnvNotEnabled`, `CodeNotFound`, `CodeInsufficientFunds`, `CodeLimitReached`, `CodePackNotAvailable`, `CodePackSoldOut`,
+`CodeIdempotencyConflict`, `CodeConflict`,
 `CodeReadOnly`, `CodeRateLimited`, `CodeInternal`, plus the SDK's own `CodeNetworkError`, `CodeTimeout` and
 `CodeInvalidResponse` (the body is not the expected JSON, or has a field of the wrong shape: the HTTP status is kept).
 `Details["fieldErrors"]` is meant for developers, not for parsing. An API code this version does not know is passed through
@@ -387,6 +468,8 @@ the API) whose `Reason` is one of `ReasonMissingHeader`, `ReasonMalformedHeader`
 or altered body), `ReasonTimestampOutOfTolerance` or `ReasonInvalidPayload` (the body is not JSON or not an event).
 Answer `400` to all of them. The message never contains the secret, the body or the signature.
 
+The `Order` of the `order.*` events carries `CreatorCode` (`nil` when the order was made without a creator code).
+
 On success you get a `*gamecoin.WebhookEvent` with `ID`, `Type`, `CreatedAt`, `Env` (`"test"` or `"live"`), `Data` and
 `RawData` (the JSON of `data`). The type decides what `Data` holds; use the accessors to avoid a type assertion:
 
@@ -421,7 +504,7 @@ GAMECOIN_SECRET_KEY=gc_sk_test_… GAMECOIN_BASE_URL=http://localhost:3400 go te
 
 ## Status
 
-Pre-release (`0.2.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
+Pre-release (`0.3.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
 module path and the repository name may change before the first public release.
 
 ## Licence

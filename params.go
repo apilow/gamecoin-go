@@ -84,6 +84,10 @@ type CheckoutParams struct {
 	// The API ignores any other value without an error. Empty means "not given" and is not sent. A pending order that
 	// the API reuses takes the language of the latest request. Optional.
 	Locale string
+	// CreatorCode is the creator code the player typed: the buyer then gets a bonus of free coins and the creator a
+	// commission. A refused code (unknown, disabled, not valid for the pack, the creator's own) is CodeValidationFailed
+	// with Details["fieldErrors"] holding "creatorCode": ["CODE_INVALID"]. Empty means "not given" and is not sent. Optional.
+	CreatorCode string
 }
 
 // RefundParams is the optional request of Orders.Refund.

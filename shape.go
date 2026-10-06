@@ -28,6 +28,8 @@ func shapeRoot(out any) string {
 		return "wallet"
 	case *Order:
 		return "order"
+	case *Redemption:
+		return "redemption"
 	}
 	return "response"
 }

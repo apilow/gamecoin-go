@@ -73,6 +73,12 @@ func TestInvalidArgumentsAreRejectedBeforeAnyRequest(t *testing.T) {
 			_, err := c.Ledger.List(ctx, user, &gamecoin.LedgerListParams{Limit: -3})
 			return err
 		},
+		"codes.redeem: empty code":   func(c *gamecoin.Client) error { _, err := c.Codes.Redeem(ctx, user, ""); return err },
+		"codes.redeem: empty player": func(c *gamecoin.Client) error { _, err := c.Codes.Redeem(ctx, none, "PGW-K7M2Q"); return err },
+		"codes.redeem: bad idempotency key": func(c *gamecoin.Client) error {
+			_, err := c.Codes.Redeem(ctx, user, "PGW-K7M2Q", gamecoin.WithIdempotencyKey("bad key\n"))
+			return err
+		},
 		"orders.get: empty id": func(c *gamecoin.Client) error { _, err := c.Orders.Get(ctx, ""); return err },
 		"ledger: limit 101": func(c *gamecoin.Client) error {
 			_, err := c.Ledger.List(ctx, user, &gamecoin.LedgerListParams{Limit: 101})

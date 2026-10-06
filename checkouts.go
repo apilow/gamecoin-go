@@ -10,11 +10,12 @@ type CheckoutsService struct{ c *core }
 
 // checkoutBody is the body of a checkout.
 type checkoutBody struct {
-	PackSKU    string `json:"packSku"`
-	SuccessURL string `json:"successUrl,omitempty"`
-	CancelURL  string `json:"cancelUrl,omitempty"`
-	Country    string `json:"country,omitempty"`
-	Locale     string `json:"locale,omitempty"`
+	PackSKU     string `json:"packSku"`
+	SuccessURL  string `json:"successUrl,omitempty"`
+	CancelURL   string `json:"cancelUrl,omitempty"`
+	Country     string `json:"country,omitempty"`
+	Locale      string `json:"locale,omitempty"`
+	CreatorCode string `json:"creatorCode,omitempty"`
 }
 
 // Create creates an order for a pack and the hosted payment page to send the player to (Checkout.CheckoutURL). An
@@ -22,6 +23,9 @@ type checkoutBody struct {
 //
 // The call is idempotent: it carries an Idempotency-Key, generated once per call unless WithIdempotencyKey gives one. A
 // replay returns the order in its current state; Checkout.Replayed tells whether it was one.
+//
+// A pack outside its sale window is CodePackNotAvailable (Details "startsAt" and "endsAt", ISO 8601 text or nil) and a
+// pack with no unit left is CodePackSoldOut; a refused CheckoutParams.CreatorCode is CodeValidationFailed.
 func (s *CheckoutsService) Create(ctx context.Context, player PlayerRef, params CheckoutParams, opts ...CallOption) (*Checkout, error) {
 	path, err := playerPath(player)
 	if err != nil {

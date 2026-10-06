@@ -28,6 +28,8 @@ type Client struct {
 	Purchases *PurchasesService
 	// Checkouts sells packs for real money.
 	Checkouts *CheckoutsService
+	// Codes redeems gift codes.
+	Codes *CodesService
 	// Orders reads and refunds orders.
 	Orders *OrdersService
 
@@ -99,6 +101,7 @@ func New(secretKey string, opts ...Option) (*Client, error) {
 		Inventory:   &InventoryService{c},
 		Purchases:   &PurchasesService{c},
 		Checkouts:   &CheckoutsService{c},
+		Codes:       &CodesService{c},
 		Orders:      &OrdersService{c},
 		core:        c,
 		environment: environment,

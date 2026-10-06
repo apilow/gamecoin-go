@@ -268,6 +268,19 @@ type PackItem struct {
 	Quantity int64 `json:"quantity"`
 }
 
+// PackAvailability says when a pack is on sale and how many units are left. A pack with no sale window and no stock
+// limit has no availability at all (Pack.Availability is nil).
+type PackAvailability struct {
+	// StartsAt is the start of the sale (included), nil when the pack is on sale from the beginning.
+	StartsAt *time.Time `json:"startsAt"`
+	// EndsAt is the end of the sale (excluded), nil when the sale has no end.
+	EndsAt *time.Time `json:"endsAt"`
+	// Remaining is the stock left, in the environment of the key; nil for an unlimited stock. It is never below 0.
+	Remaining *int64 `json:"remaining"`
+	// Founder is true for a founder pack.
+	Founder bool `json:"founder"`
+}
+
 // Pack is a pack of the catalog: what a player buys with real money.
 type Pack struct {
 	// SKU is the pack sku.
@@ -288,6 +301,9 @@ type Pack struct {
 	Badge *string `json:"badge"`
 	// MaxPerPlayer is the maximum number of purchases per player, nil for no limit.
 	MaxPerPlayer *int64 `json:"maxPerPlayer"`
+	// Availability is the sale window and the stock of the pack, nil for an ordinary pack (always on sale, no limit). The
+	// catalog also lists packs that are scheduled, ended or sold out: your shop decides what to show.
+	Availability *PackAvailability `json:"availability"`
 }
 
 // Catalog lists the active currencies, items and packs of the game.
@@ -298,6 +314,10 @@ type Catalog struct {
 	Items []Item `json:"items"`
 	// Packs are the packs.
 	Packs []Pack `json:"packs"`
+	// Prelaunch is true while the game is not launched yet: a shop then shows pre-orders with LaunchAt.
+	Prelaunch bool `json:"prelaunch"`
+	// LaunchAt is the launch date of the game, nil when none is set.
+	LaunchAt *time.Time `json:"launchAt"`
 }
 
 // OrderPack is the pack an order was made for, as it was at the time of the purchase.
@@ -306,6 +326,14 @@ type OrderPack struct {
 	SKU string `json:"sku"`
 	// Name is the pack name.
 	Name string `json:"name"`
+}
+
+// OrderCreatorCode is the creator code an order was made with. The rates of the creator are never exposed.
+type OrderCreatorCode struct {
+	// Code is the creator code.
+	Code string `json:"code"`
+	// CreatorName is the name of the creator.
+	CreatorName string `json:"creatorName"`
 }
 
 // Order is the purchase of a pack with real money.
@@ -338,6 +366,8 @@ type Order struct {
 	FulfilledAt *time.Time `json:"fulfilledAt"`
 	// RefundedAt is the refund time, nil unless refunded.
 	RefundedAt *time.Time `json:"refundedAt"`
+	// CreatorCode is the creator code of the order, nil when the order was made without one.
+	CreatorCode *OrderCreatorCode `json:"creatorCode"`
 }
 
 // Checkout is the result of the creation of a checkout.
@@ -348,5 +378,35 @@ type Checkout struct {
 	CheckoutURL string `json:"checkoutUrl"`
 	// Replayed is true when the response was the replay of an earlier request with the same idempotency key (the order
 	// is then returned in its current state).
+	Replayed bool `json:"-"`
+}
+
+// RedemptionGrant is a currency amount credited by a gift code, with the balance after the credit.
+type RedemptionGrant struct {
+	// Currency is the currency code.
+	Currency string `json:"currency"`
+	// Amount is the amount credited, always to the bonus bucket (a gift code never gives paid coins).
+	Amount int64 `json:"amount"`
+	// Balance is the balance of the currency after the credit.
+	Balance Balance `json:"balance"`
+}
+
+// RedemptionItem is a quantity of an item, given or skipped by a gift code.
+type RedemptionItem struct {
+	// SKU is the item sku.
+	SKU string `json:"sku"`
+	// Quantity is the quantity.
+	Quantity int64 `json:"quantity"`
+}
+
+// Redemption is the result of the redemption of a gift code.
+type Redemption struct {
+	// Grants are the currency amounts credited.
+	Grants []RedemptionGrant `json:"grants"`
+	// Items are the items given.
+	Items []RedemptionItem `json:"items"`
+	// Skipped are the items the player could not receive (for example beyond the maximum a player can own).
+	Skipped []RedemptionItem `json:"skipped"`
+	// Replayed is true when the response was the replay of an earlier request with the same idempotency key.
 	Replayed bool `json:"-"`
 }

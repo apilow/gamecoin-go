@@ -22,7 +22,7 @@ const (
 var hookNow = time.Unix(hookTime, 0)
 
 const (
-	orderEventBody  = `{"id":"evt_6ac419fbdbe02af6c99c3d47_ful","type":"order.fulfilled","createdAt":"2026-10-06T10:00:02.000Z","env":"test","data":{"id":"6ac419fbdbe02af6c99c3d47","playerId":"6ac419fa60e877541898f38d","status":"fulfilled","pack":{"sku":"gems-500","name":"Bag of gems"},"amountCents":499,"currency":"EUR","country":"BE","vatRateBp":2100,"vatCents":87,"netCents":412,"createdAt":"2026-10-06T10:00:00.000Z","paidAt":"2026-10-06T10:00:01.000Z","fulfilledAt":"2026-10-06T10:00:01.000Z","refundedAt":null}}`
+	orderEventBody  = `{"id":"evt_6ac419fbdbe02af6c99c3d47_ful","type":"order.fulfilled","createdAt":"2026-10-06T10:00:02.000Z","env":"test","data":{"id":"6ac419fbdbe02af6c99c3d47","playerId":"6ac419fa60e877541898f38d","status":"fulfilled","pack":{"sku":"gems-500","name":"Bag of gems"},"amountCents":499,"currency":"EUR","country":"BE","vatRateBp":2100,"vatCents":87,"netCents":412,"createdAt":"2026-10-06T10:00:00.000Z","paidAt":"2026-10-06T10:00:01.000Z","fulfilledAt":"2026-10-06T10:00:01.000Z","refundedAt":null,"creatorCode":null}}`
 	walletEventBody = `{"id":"evt_6ac419fbdbe02af6c99c3d47_cre","type":"wallet.credited","createdAt":"2026-10-06T10:00:02.000Z","env":"test","data":{"playerId":"6ac419fa60e877541898f38d","orderId":"6ac419fbdbe02af6c99c3d47","credits":[{"currency":"gems","paid":500,"bonus":50}]}}`
 	testEventBody   = `{"id":"evt_test_1","type":"webhook.test","createdAt":"2026-10-06T10:00:02.000Z","env":"live","data":{"message":"Hello from GameCoin"}}`
 )

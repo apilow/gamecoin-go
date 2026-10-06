@@ -28,6 +28,7 @@ func TestABodyOfTheWrongShapeIsINVALIDRESPONSEWithTheHTTPStatusAndThePath(t *tes
 	getPlayer := func(r *rig) error { _, err := r.client.Players.Get(ctx, user); return err }
 	getOrder := func(r *rig) error { _, err := r.client.Orders.Get(ctx, "o1"); return err }
 	getCatalog := func(r *rig) error { _, err := r.client.Catalog.Get(ctx); return err }
+	redeem := func(r *rig) error { _, err := r.client.Codes.Redeem(ctx, user, "PGW-K7M2Q"); return err }
 	entryWithout := func(old, replacement string) string {
 		return `{"entry":` + strings.Replace(sampleEntry, old, replacement, 1) + `,"balance":` + sampleBal + `}`
 	}
@@ -69,6 +70,18 @@ func TestABodyOfTheWrongShapeIsINVALIDRESPONSEWithTheHTTPStatusAndThePath(t *tes
 		{"order without pack", getOrder, strings.Replace(sampleOrder, `"pack":{"sku":"gems-500","name":"Bag of gems"},`, "", 1), "order.pack"},
 		{"order without paidAt", getOrder, strings.Replace(sampleOrder, `"paidAt":null,`, "", 1), "order.paidAt"},
 		{"order with a text amount", func(r *rig) error { _, err := r.client.Orders.Refund(ctx, "o1", nil); return err }, strings.Replace(sampleOrder, `"amountCents":499`, `"amountCents":"499"`, 1), "order.amountCents"},
+		{"order without creatorCode", getOrder, strings.Replace(sampleOrder, `,"creatorCode":null`, "", 1), "order.creatorCode"},
+		{"order with a broken creatorCode", getOrder, strings.Replace(sampleOrder, `"creatorCode":null`, `"creatorCode":{"code":"X"}`, 1), "order.creatorCode.creatorName"},
+		{"catalog without prelaunch", getCatalog, strings.Replace(sampleCatalog, `,"prelaunch":true`, "", 1), "catalog.prelaunch"},
+		{"catalog without launchAt", getCatalog, strings.Replace(sampleCatalog, `,"launchAt":"2026-12-01T09:00:00.000Z"`, "", 1), "catalog.launchAt"},
+		{"catalog pack without availability", getCatalog, strings.Replace(sampleCatalog, `,"availability":{"startsAt":"2026-12-01T09:00:00.000Z","endsAt":null,"remaining":42,"founder":true}`, "", 1), "catalog.packs[0].availability"},
+		{"catalog pack availability without founder", getCatalog, strings.Replace(sampleCatalog, `,"founder":true`, "", 1), "catalog.packs[0].availability.founder"},
+		{"catalog pack availability with a bad date", getCatalog, strings.Replace(sampleCatalog, `"startsAt":"2026-12-01T09:00:00.000Z"`, `"startsAt":"soon"`, 1), "catalog.packs[0].availability.startsAt"},
+		{"catalog pack availability with a text stock", getCatalog, strings.Replace(sampleCatalog, `"remaining":42`, `"remaining":"42"`, 1), "catalog.packs[0].availability.remaining"},
+		{"redemption without grants", redeem, `{"items":[],"skipped":[]}`, "redemption.grants"},
+		{"redemption without skipped", redeem, `{"grants":[],"items":[]}`, "redemption.skipped"},
+		{"redemption grant without balance", redeem, `{"grants":[{"currency":"gems","amount":5}],"items":[],"skipped":[]}`, "redemption.grants[0].balance"},
+		{"redemption item with a text quantity", redeem, `{"grants":[],"items":[{"sku":"potion","quantity":"2"}],"skipped":[]}`, "redemption.items[0].quantity"},
 		{"catalog without packs", getCatalog, `{"currencies":[],"items":[]}`, "catalog.packs"},
 		{"catalog item without type", getCatalog, strings.Replace(sampleCatalog, `"type":"consumable",`, "", 1), "catalog.items[0].type"},
 		{"catalog pack with a bad grant", getCatalog, strings.Replace(sampleCatalog, `"amount":100,"bonus":20`, `"amount":100`, 1), "catalog.packs[0].grants[0].bonus"},

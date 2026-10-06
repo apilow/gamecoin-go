@@ -4,6 +4,25 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - Unreleased
+
+### Added
+- `client.Codes.Redeem(ctx, player, code, opts...)`: a player uses a gift code (`POST /players/{player}/codes/redeem`).
+  It returns a `*Redemption` (`Grants` with the balance after the credit, `Items`, `Skipped`, `Replayed`) and is
+  idempotent like the other writes. The code is sent as it is. A refused code is `VALIDATION_FAILED` with
+  `Details["fieldErrors"]["code"] == ["CODE_INVALID"]`.
+- `CheckoutParams.CreatorCode`: the creator code typed by the player (not sent when empty), and `Order.CreatorCode`
+  (`*OrderCreatorCode` with `Code` and `CreatorName`, `nil` without a code), also in the `order.*` webhook events.
+- `Pack.Availability` (`*PackAvailability` with `StartsAt`, `EndsAt`, `Remaining`, `Founder`; `nil` for an ordinary
+  pack), `Catalog.Prelaunch` and `Catalog.LaunchAt`.
+- The error codes `CodePackNotAvailable` (`Details` `startsAt` and `endsAt`) and `CodePackSoldOut` (`Details` `packSku`).
+
+### Changed
+- The new fields are part of the checked response shape: a response without `creatorCode` on an order, without
+  `availability` on a pack or without `prelaunch` and `launchAt` on the catalog is `INVALID_RESPONSE` (each one is
+  present, and `null` when it does not apply). The API sends them from this version on.
+- The version is `0.3.0` (`Version` and the user agent).
+
 ## [0.2.0] - Unreleased
 
 ### Added

@@ -240,7 +240,7 @@ func TestPendingOrderAndCheckoutURL(t *testing.T) {
 func TestOrderDatesAreHonouredWithOffsets(t *testing.T) {
 	r := newRig(t)
 	r.f.ok(`{"id":"o1","playerId":"p1","status":"refunded","pack":{"sku":"s","name":"n"},"amountCents":1,"currency":"EUR","country":"BE","vatRateBp":0,"vatCents":0,"netCents":1,
-	"createdAt":"2026-10-05T20:38:24.539Z","paidAt":"2026-10-05T20:40:00.000Z","fulfilledAt":"2026-10-05T20:40:01.000Z","refundedAt":"2026-10-05T20:50:00.000+02:00"}`)
+	"createdAt":"2026-10-05T20:38:24.539Z","paidAt":"2026-10-05T20:40:00.000Z","fulfilledAt":"2026-10-05T20:40:01.000Z","refundedAt":"2026-10-05T20:50:00.000+02:00","creatorCode":{"code":"LEAPLAY","creatorName":"Lea Play"}}`)
 
 	o, err := r.client.Orders.Get(context.Background(), "o1")
 	if err != nil {
@@ -296,7 +296,7 @@ func TestCatalogCurrenciesItemsAndPacks(t *testing.T) {
 
 func TestItemWithoutAPriceAndPackWithoutALimit(t *testing.T) {
 	r := newRig(t)
-	r.f.ok(`{"currencies":[],"items":[{"sku":"gift","name":"Gift","description":null,"type":"durable","price":null,"maxOwned":null,"clientPurchasable":false,"metadata":{}}],"packs":[{"sku":"p","name":"P","description":null,"priceCents":1,"currency":"EUR","grants":[],"items":[],"badge":null,"maxPerPlayer":null}]}`)
+	r.f.ok(`{"currencies":[],"items":[{"sku":"gift","name":"Gift","description":null,"type":"durable","price":null,"maxOwned":null,"clientPurchasable":false,"metadata":{}}],"packs":[{"sku":"p","name":"P","description":null,"priceCents":1,"currency":"EUR","grants":[],"items":[],"badge":null,"maxPerPlayer":null,"availability":null}],"prelaunch":false,"launchAt":null}`)
 
 	c, err := r.client.Catalog.Get(context.Background())
 	if err != nil {
@@ -309,7 +309,7 @@ func TestItemWithoutAPriceAndPackWithoutALimit(t *testing.T) {
 
 func TestUnknownEnumerationValuesDoNotBreakDecoding(t *testing.T) {
 	r := newRig(t)
-	r.f.ok(`{"id":"o1","playerId":"p1","status":"disputed_v2","pack":{"sku":"s","name":"n"},"amountCents":1,"currency":"EUR","country":"BE","vatRateBp":0,"vatCents":0,"netCents":1,"createdAt":"2026-10-05T20:38:24.539Z","paidAt":null,"fulfilledAt":null,"refundedAt":null}`)
+	r.f.ok(`{"id":"o1","playerId":"p1","status":"disputed_v2","pack":{"sku":"s","name":"n"},"amountCents":1,"currency":"EUR","country":"BE","vatRateBp":0,"vatCents":0,"netCents":1,"createdAt":"2026-10-05T20:38:24.539Z","paidAt":null,"fulfilledAt":null,"refundedAt":null,"creatorCode":null}`)
 
 	o, err := r.client.Orders.Get(context.Background(), "o1")
 	if err != nil {

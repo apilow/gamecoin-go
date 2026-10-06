@@ -35,7 +35,7 @@
 //
 // # Idempotency and retries
 //
-// Every call that changes a wallet or an inventory, or creates a checkout, carries an Idempotency-Key. When you give
+// Every call that changes a wallet or an inventory, redeems a gift code, or creates a checkout, carries an Idempotency-Key. When you give
 // none (see WithIdempotencyKey) the SDK generates a UUID v4 once per call and reuses it for each automatic retry, so a
 // retry can never credit twice. Network errors, timeouts, 5xx and 429 responses are retried (WithMaxRetries, default 2)
 // with exponential backoff; a Retry-After header is honoured up to 30 seconds. Orders.Refund has no idempotency key and

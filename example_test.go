@@ -52,7 +52,7 @@ func (a *exampleAPI) order(status string) map[string]any {
 	return map[string]any{
 		"id": "order-1", "playerId": "player-1", "status": status, "pack": map[string]any{"sku": "gems-500", "name": "Bag of gems"},
 		"amountCents": 499, "currency": "EUR", "country": "BE", "vatRateBp": 2100, "vatCents": 87, "netCents": 412,
-		"createdAt": "2026-10-05T20:38:24.539Z", "paidAt": nil, "fulfilledAt": nil, "refundedAt": nil,
+		"createdAt": "2026-10-05T20:38:24.539Z", "paidAt": nil, "fulfilledAt": nil, "refundedAt": nil, "creatorCode": nil,
 	}
 }
 
@@ -107,7 +107,8 @@ func (a *exampleAPI) serve(w http.ResponseWriter, r *http.Request) {
 			"items": []any{map[string]any{"sku": "potion", "name": "Potion", "description": nil, "type": "consumable",
 				"price": map[string]any{"currency": "gems", "amount": 20}, "maxOwned": nil, "clientPurchasable": true, "metadata": map[string]any{}}},
 			"packs": []any{map[string]any{"sku": "gems-500", "name": "Bag of gems", "description": nil, "priceCents": 499, "currency": "EUR",
-				"grants": []any{map[string]any{"currency": "gems", "amount": 500, "bonus": 50}}, "items": []any{}, "badge": nil, "maxPerPlayer": nil}},
+				"grants": []any{map[string]any{"currency": "gems", "amount": 500, "bonus": 50}}, "items": []any{}, "badge": nil, "maxPerPlayer": nil, "availability": nil}},
+			"prelaunch": false, "launchAt": nil,
 		}, false)
 	case r.Method == http.MethodPut && strings.HasPrefix(path, "/players/"):
 		send(200, map[string]any{"id": "player-1", "externalId": "user-42", "kind": "external", "displayName": "Ann",

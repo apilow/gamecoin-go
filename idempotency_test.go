@@ -45,6 +45,10 @@ func idempotentCalls() []idempotentCall {
 			_, err := r.client.Checkouts.Create(ctx, user, gamecoin.CheckoutParams{PackSKU: "starter"}, opts...)
 			return err
 		}},
+		{"codes.redeem", sampleRedemption, func(r *rig, opts ...gamecoin.CallOption) error {
+			_, err := r.client.Codes.Redeem(ctx, user, "PGW-K7M2Q", opts...)
+			return err
+		}},
 	}
 }
 
@@ -193,7 +197,7 @@ func TestReplayedIsTrueOnlyWhenTheAPIsaysSo(t *testing.T) {
 func TestReplayedIsExposedByEachIdempotentResultType(t *testing.T) {
 	r := newRig(t)
 	replayed := []string{"Idempotent-Replayed", "true"}
-	r.f.ok(sampleChange, replayed...).ok(sampleChange, replayed...).ok(samplePurchase, replayed...).ok(sampleCheckout, replayed...).ok(`{"items":[]}`)
+	r.f.ok(sampleChange, replayed...).ok(sampleChange, replayed...).ok(samplePurchase, replayed...).ok(sampleCheckout, replayed...).ok(sampleRedemption, replayed...).ok(`{"items":[]}`)
 	ctx := context.Background()
 
 	granted, err := r.client.Inventory.Grant(ctx, user, gamecoin.InventoryParams{SKU: "potion"})
@@ -211,6 +215,10 @@ func TestReplayedIsExposedByEachIdempotentResultType(t *testing.T) {
 	checkout, err := r.client.Checkouts.Create(ctx, user, gamecoin.CheckoutParams{PackSKU: "starter"})
 	if err != nil || !checkout.Replayed {
 		t.Errorf("Checkouts.Create: %+v, %v", checkout, err)
+	}
+	redemption, err := r.client.Codes.Redeem(ctx, user, "PGW-K7M2Q")
+	if err != nil || !redemption.Replayed {
+		t.Errorf("Codes.Redeem: %+v, %v", redemption, err)
 	}
 	if _, err := r.client.Inventory.List(ctx, user); err != nil {
 		t.Fatal(err)

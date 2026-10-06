@@ -30,6 +30,11 @@ const (
 	CodeInsufficientFunds = "INSUFFICIENT_FUNDS"
 	// CodeLimitReached is a 409: maxOwned or maxPerPlayer exceeded.
 	CodeLimitReached = "LIMIT_REACHED"
+	// CodePackNotAvailable is a 409: the pack is outside its sale window (Details "startsAt" and "endsAt": ISO 8601 text, or
+	// nil when there is no such bound).
+	CodePackNotAvailable = "PACK_NOT_AVAILABLE"
+	// CodePackSoldOut is a 409: the total stock of the pack is exhausted (Details "packSku").
+	CodePackSoldOut = "PACK_SOLD_OUT"
 	// CodeIdempotencyConflict is a 409: the idempotency key was already used with another request.
 	CodeIdempotencyConflict = "IDEMPOTENCY_CONFLICT"
 	// CodeConflict is a 409: invalid state transition (for example the refund of an unpaid order).

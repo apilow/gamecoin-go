@@ -32,7 +32,7 @@ func TestSendsAuthenticationAcceptAndUserAgentHeaders(t *testing.T) {
 	if got := req.Header.Get("Accept"); got != "application/json" {
 		t.Errorf("Accept = %q", got)
 	}
-	if got := req.Header.Get("User-Agent"); !regexp.MustCompile(`^gamecoin-go/0\.2\.0 \(go/[0-9][^ )]*\)$`).MatchString(got) {
+	if got := req.Header.Get("User-Agent"); !regexp.MustCompile(`^gamecoin-go/0\.3\.0[ ]\(go/[0-9][^ )]*\)$`).MatchString(got) {
 		t.Errorf("User-Agent = %q", got)
 	}
 	if got := req.Header.Get("Idempotency-Key"); got != "" {
@@ -41,7 +41,7 @@ func TestSendsAuthenticationAcceptAndUserAgentHeaders(t *testing.T) {
 	if got := req.Header.Get("Content-Type"); got != "" {
 		t.Errorf("a read has no body, Content-Type = %q", got)
 	}
-	if gamecoin.Version != "0.2.0" {
+	if gamecoin.Version != "0.3.0" {
 		t.Errorf("Version = %q", gamecoin.Version)
 	}
 }
@@ -293,11 +293,13 @@ func TestErrorCodeConstantsMatchTheAPICodes(t *testing.T) {
 		gamecoin.CodeReadOnly:               "READ_ONLY",
 		gamecoin.CodeRateLimited:            "RATE_LIMITED",
 		gamecoin.CodeInternal:               "INTERNAL",
+		gamecoin.CodePackNotAvailable:       "PACK_NOT_AVAILABLE",
+		gamecoin.CodePackSoldOut:            "PACK_SOLD_OUT",
 		gamecoin.CodeNetworkError:           "NETWORK_ERROR",
 		gamecoin.CodeTimeout:                "TIMEOUT",
 		gamecoin.CodeInvalidResponse:        "INVALID_RESPONSE",
 	}
-	if len(want) != 18 {
+	if len(want) != 20 {
 		t.Fatalf("the table has %d entries (two constants share a value?)", len(want))
 	}
 	for got, expected := range want {

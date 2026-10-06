@@ -200,13 +200,14 @@ const (
 	sampleEntry  = `{"id":"6ac40ac312fe8b4190d46ffc","type":"grant","currency":"gems","paidDelta":0,"bonusDelta":100,"balanceAfter":{"paid":0,"bonus":100,"total":100},"reason":"level_up","metadata":{"a":"b"},"ref":{},"createdAt":"2026-10-05T20:38:27.227Z"}`
 	sampleBal    = `{"currency":"gems","paid":0,"bonus":100,"total":100}`
 	sampleItem   = `{"sku":"potion","quantity":3,"updatedAt":"2026-10-05T20:40:00.000Z"}`
-	sampleOrder  = `{"id":"o1","playerId":"p1","status":"pending","pack":{"sku":"gems-500","name":"Bag of gems"},"amountCents":499,"currency":"EUR","country":"BE","vatRateBp":2100,"vatCents":87,"netCents":412,"createdAt":"2026-10-05T20:38:24.539Z","paidAt":null,"fulfilledAt":null,"refundedAt":null}`
+	sampleOrder  = `{"id":"o1","playerId":"p1","status":"pending","pack":{"sku":"gems-500","name":"Bag of gems"},"amountCents":499,"currency":"EUR","country":"BE","vatRateBp":2100,"vatCents":87,"netCents":412,"createdAt":"2026-10-05T20:38:24.539Z","paidAt":null,"fulfilledAt":null,"refundedAt":null,"creatorCode":null}`
 
-	sampleMovement = `{"entry":` + sampleEntry + `,"balance":` + sampleBal + `}`
-	samplePurchase = `{"entry":` + sampleEntry + `,"balance":` + sampleBal + `,"item":` + sampleItem + `}`
-	sampleCheckout = `{"order":` + sampleOrder + `,"checkoutUrl":"https://gc.example.test/pay/o1?t=x"}`
-	sampleChange   = `{"item":` + sampleItem + `}`
-	sampleCatalog  = `{"currencies":[{"code":"gems","name":"Gems","purchasable":true},{"code":"gold","name":"Gold","purchasable":false}],"items":[{"sku":"potion","name":"Potion","description":null,"type":"consumable","price":{"currency":"gems","amount":20},"maxOwned":null,"clientPurchasable":true,"metadata":{}},{"sku":"fire-sword","name":"Fire sword","description":"Hot","type":"durable","price":{"currency":"gems","amount":300},"maxOwned":1,"clientPurchasable":true,"metadata":{"tier":"3"}}],"packs":[{"sku":"starter","name":"Starter pack","description":null,"priceCents":99,"currency":"EUR","grants":[{"currency":"gems","amount":100,"bonus":20}],"items":[{"sku":"potion","quantity":1}],"badge":"new","maxPerPlayer":1}]}`
+	sampleMovement   = `{"entry":` + sampleEntry + `,"balance":` + sampleBal + `}`
+	samplePurchase   = `{"entry":` + sampleEntry + `,"balance":` + sampleBal + `,"item":` + sampleItem + `}`
+	sampleCheckout   = `{"order":` + sampleOrder + `,"checkoutUrl":"https://gc.example.test/pay/o1?t=x"}`
+	sampleRedemption = `{"grants":[{"currency":"gems","amount":100,"balance":{"currency":"gems","paid":0,"bonus":100,"total":100}}],"items":[{"sku":"potion","quantity":2}],"skipped":[{"sku":"fire-sword","quantity":1}]}`
+	sampleChange     = `{"item":` + sampleItem + `}`
+	sampleCatalog    = `{"currencies":[{"code":"gems","name":"Gems","purchasable":true},{"code":"gold","name":"Gold","purchasable":false}],"items":[{"sku":"potion","name":"Potion","description":null,"type":"consumable","price":{"currency":"gems","amount":20},"maxOwned":null,"clientPurchasable":true,"metadata":{}},{"sku":"fire-sword","name":"Fire sword","description":"Hot","type":"durable","price":{"currency":"gems","amount":300},"maxOwned":1,"clientPurchasable":true,"metadata":{"tier":"3"}}],"packs":[{"sku":"starter","name":"Starter pack","description":null,"priceCents":99,"currency":"EUR","grants":[{"currency":"gems","amount":100,"bonus":20}],"items":[{"sku":"potion","quantity":1}],"badge":"new","maxPerPlayer":1,"availability":{"startsAt":"2026-12-01T09:00:00.000Z","endsAt":null,"remaining":42,"founder":true}}],"prelaunch":true,"launchAt":"2026-12-01T09:00:00.000Z"}`
 )
 
 var user = gamecoin.Ext("user-42")

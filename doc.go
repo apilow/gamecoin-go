@@ -40,4 +40,13 @@
 // retry can never credit twice. Network errors, timeouts, 5xx and 429 responses are retried (WithMaxRetries, default 2)
 // with exponential backoff; a Retry-After header is honoured up to 30 seconds. Orders.Refund has no idempotency key and
 // is retried on 429 only.
+//
+// # Webhooks
+//
+// ConstructEvent verifies the signature of a call that GameCoin makes to your server and returns the typed event. Give
+// it the raw body (io.ReadAll(r.Body)), never a re-serialised one:
+//
+//	event, err := gamecoin.ConstructEvent(body, r.Header.Get(gamecoin.WebhookSignatureHeader), secret)
+//	var sigErr *gamecoin.WebhookSignatureError
+//	if errors.As(err, &sigErr) { /* answer 400 */ }
 package gamecoin

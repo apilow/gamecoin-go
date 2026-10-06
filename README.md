@@ -211,6 +211,7 @@ checkout, err := client.Checkouts.Create(ctx, player, gamecoin.CheckoutParams{
 	SuccessURL: "https://game.example.com/shop/thanks", // optional: where the player lands after paying
 	CancelURL:  "https://game.example.com/shop",        // optional
 	Country:    "BE",                                   // optional: the VAT country (server side only)
+	Locale:     "nl",                                   // optional: "fr", "en" or "nl", language of the payment page and e-mails
 })
 check(err)
 fmt.Printf("%s: %d cents (%s), pay at %s\n", checkout.Order.Status, checkout.Order.AmountCents, checkout.Order.Currency, checkout.CheckoutURL)
@@ -226,6 +227,10 @@ if gamecoin.IsCode(err, gamecoin.CodeConflict) {
 ```
 
 In test mode the payment is simulated: open `CheckoutURL` and press "Pay (simulated)".
+
+`Locale` (`"fr"`, `"en"` or `"nl"`) is the language of the hosted payment page, the receipt and the e-mails of the order.
+The API ignores any other value without an error, and an empty `Locale` is not sent. A pending order that the API reuses
+takes the language of the latest request.
 
 **Refunds have no idempotency key**, so the SDK retries `Orders.Refund` on `429` only. After a network error, a timeout
 or a `5xx` it returns the error, and you should check the outcome with `Orders.Get` (status `refunded` or not) before
@@ -309,6 +314,93 @@ as is, and an unknown future `Status` or `Type` value stays readable as a string
 `Quantity`, a ledger `Limit` outside 1 to 100, an invalid idempotency key return an error that wraps
 `gamecoin.ErrInvalidArgument` (it is not a `*gamecoin.Error`), and its message names the argument, never its value.
 
+## Webhooks
+
+GameCoin calls **your server** when an order is delivered, refunded or disputed. Every call is signed: check it with
+`gamecoin.ConstructEvent`, a plain function that needs no client and makes no request. Declare the endpoint in the
+dashboard, which shows its signing secret (`whsec_gc_…`) once; keep it in your server's configuration, never in the game.
+
+```go
+package main
+
+import (
+	"errors"
+	"io"
+	"log"
+	"net/http"
+	"os"
+
+	gamecoin "github.com/apilow/gamecoin-go"
+)
+
+func main() {
+	secret := os.Getenv("GAMECOIN_WEBHOOK_SECRET") // whsec_gc_…
+
+	http.HandleFunc("/gamecoin/webhook", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body) // the RAW body: read it before any JSON parsing
+		if err != nil {
+			http.Error(w, "cannot read the body", http.StatusBadRequest)
+			return
+		}
+		event, err := gamecoin.ConstructEvent(body, r.Header.Get(gamecoin.WebhookSignatureHeader), secret)
+		if err != nil {
+			var sigErr *gamecoin.WebhookSignatureError
+			if errors.As(err, &sigErr) {
+				http.Error(w, "invalid signature", http.StatusBadRequest) // sigErr.Reason says why
+				return
+			}
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+
+		// GameCoin delivers at least once: process an event id only once.
+		switch event.Type {
+		case gamecoin.EventOrderFulfilled:
+			order := event.Order()
+			log.Printf("order %s delivered to player %s", order.ID, order.PlayerID)
+		case gamecoin.EventWalletCredited:
+			log.Printf("credits for %s: %+v", event.WalletCredited().PlayerID, event.WalletCredited().Credits)
+		}
+		w.WriteHeader(http.StatusOK) // a 2xx within 10 seconds is a success
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+```
+
+A fuller version, with a check for repeated events, lives in `examples/webhook`.
+
+**Pass the raw body.** The signature covers the exact bytes GameCoin sent, so read them with `io.ReadAll(r.Body)` (or
+`http.MaxBytesReader` around it) *before* any JSON decoding. A body that was decoded and encoded again can differ by one
+character and fails the check. `ConstructEvent` takes a `[]byte`; convert a string with `[]byte(text)`.
+
+`ConstructEvent(rawBody []byte, signatureHeader, secret string, opts ...WebhookOption) (*WebhookEvent, error)`:
+
+- The signature is the lowercase hex HMAC-SHA256 of `<t>.<raw body>` with the signing secret as key, carried by the
+  `GameCoin-Signature` header (`gamecoin.WebhookSignatureHeader`) as `t=<unix seconds>,v1=<hex>`. Every `v1` is compared in
+  constant time; unknown keys in the header are ignored.
+- The timestamp must be within **5 minutes** of the clock, in either direction, which stops a replayed call.
+  `gamecoin.WithTolerance(d)` changes it (`0` turns the check off); `gamecoin.WithClock(fn)` replaces the clock, for tests.
+- The secret is trimmed. An empty secret or a negative tolerance returns an error that wraps `ErrInvalidArgument`.
+
+A call that must not be trusted returns a `*gamecoin.WebhookSignatureError` (not a `*gamecoin.Error`, which is the error of
+the API) whose `Reason` is one of `ReasonMissingHeader`, `ReasonMalformedHeader`, `ReasonNoMatchingSignature` (wrong secret
+or altered body), `ReasonTimestampOutOfTolerance` or `ReasonInvalidPayload` (the body is not JSON or not an event).
+Answer `400` to all of them. The message never contains the secret, the body or the signature.
+
+On success you get a `*gamecoin.WebhookEvent` with `ID`, `Type`, `CreatedAt`, `Env` (`"test"` or `"live"`), `Data` and
+`RawData` (the JSON of `data`). The type decides what `Data` holds; use the accessors to avoid a type assertion:
+
+| `Type` | Constant | `Data` | Accessor |
+|---|---|---|---|
+| `order.fulfilled` | `EventOrderFulfilled` | `*Order` | `Order()` |
+| `order.refunded` | `EventOrderRefunded` | `*Order` | `Order()` |
+| `order.chargeback` | `EventOrderChargeback` | `*Order` | `Order()` |
+| `wallet.credited` | `EventWalletCredited` | `*WalletCredited` (`PlayerID`, `OrderID`, `Credits` of `Currency`, `Paid`, `Bonus`) | `WalletCredited()` |
+| `webhook.test` | `EventWebhookTest` | `*WebhookTest` (`Message`) | `Test()` |
+
+An event of a type this version does not know is returned as is, with `Data` set to the decoded JSON (a `map[string]any`)
+rather than failing: your endpoint keeps working when GameCoin adds an event.
+
 ## Running the tests
 
 ```sh
@@ -329,7 +421,7 @@ GAMECOIN_SECRET_KEY=gc_sk_test_… GAMECOIN_BASE_URL=http://localhost:3400 go te
 
 ## Status
 
-Pre-release (`0.1.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
+Pre-release (`0.2.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
 module path and the repository name may change before the first public release.
 
 ## Licence

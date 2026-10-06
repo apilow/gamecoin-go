@@ -32,7 +32,7 @@ func TestSendsAuthenticationAcceptAndUserAgentHeaders(t *testing.T) {
 	if got := req.Header.Get("Accept"); got != "application/json" {
 		t.Errorf("Accept = %q", got)
 	}
-	if got := req.Header.Get("User-Agent"); !regexp.MustCompile(`^gamecoin-go/0\.1\.0 \(go/[0-9][^ )]*\)$`).MatchString(got) {
+	if got := req.Header.Get("User-Agent"); !regexp.MustCompile(`^gamecoin-go/0\.2\.0 \(go/[0-9][^ )]*\)$`).MatchString(got) {
 		t.Errorf("User-Agent = %q", got)
 	}
 	if got := req.Header.Get("Idempotency-Key"); got != "" {
@@ -41,7 +41,7 @@ func TestSendsAuthenticationAcceptAndUserAgentHeaders(t *testing.T) {
 	if got := req.Header.Get("Content-Type"); got != "" {
 		t.Errorf("a read has no body, Content-Type = %q", got)
 	}
-	if gamecoin.Version != "0.1.0" {
+	if gamecoin.Version != "0.2.0" {
 		t.Errorf("Version = %q", gamecoin.Version)
 	}
 }

@@ -251,14 +251,14 @@ func TestCheckoutsCreateWithEveryField(t *testing.T) {
 	r := newRig(t)
 	r.f.ok(sampleCheckout)
 	_, err := r.client.Checkouts.Create(context.Background(), user, gamecoin.CheckoutParams{
-		PackSKU: "gems-500", SuccessURL: "https://game.test/ok", CancelURL: "https://game.test/ko", Country: "BE",
+		PackSKU: "gems-500", SuccessURL: "https://game.test/ok", CancelURL: "https://game.test/ko", Country: "BE", Locale: "nl",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	req := r.f.only()
 	checkRequest(t, req, http.MethodPost, "/api/v1/players/ext%3Auser-42/checkouts",
-		`{"packSku":"gems-500","successUrl":"https://game.test/ok","cancelUrl":"https://game.test/ko","country":"BE"}`)
+		`{"packSku":"gems-500","successUrl":"https://game.test/ok","cancelUrl":"https://game.test/ko","country":"BE","locale":"nl"}`)
 	if req.Header.Get("Idempotency-Key") == "" {
 		t.Error("a checkout carries an idempotency key")
 	}

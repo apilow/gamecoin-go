@@ -14,6 +14,7 @@ type checkoutBody struct {
 	SuccessURL string `json:"successUrl,omitempty"`
 	CancelURL  string `json:"cancelUrl,omitempty"`
 	Country    string `json:"country,omitempty"`
+	Locale     string `json:"locale,omitempty"`
 }
 
 // Create creates an order for a pack and the hosted payment page to send the player to (Checkout.CheckoutURL). An

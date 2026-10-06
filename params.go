@@ -80,6 +80,10 @@ type CheckoutParams struct {
 	CancelURL string
 	// Country is the ISO 3166-1 alpha-2 country of the player, for the VAT. Optional.
 	Country string
+	// Locale is the language of the hosted payment page, the receipt and the e-mails of the order: "fr", "en" or "nl".
+	// The API ignores any other value without an error. Empty means "not given" and is not sent. A pending order that
+	// the API reuses takes the language of the latest request. Optional.
+	Locale string
 }
 
 // RefundParams is the optional request of Orders.Refund.

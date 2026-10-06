@@ -314,3 +314,33 @@ func TestWebhookOrderEventsCarryTheCreatorCodeOrNull(t *testing.T) {
 		t.Errorf("order = %+v, want a nil CreatorCode", o)
 	}
 }
+
+func TestWebhookOrderEventWithoutCreatorCodeIsReadable(t *testing.T) {
+	old := strings.Replace(orderEventBody, `,"creatorCode":null`, "", 1)
+	if old == orderEventBody {
+		t.Fatal("the fixture has no creatorCode")
+	}
+
+	event, err := construct(old, signed(old))
+	if err != nil {
+		t.Fatalf("an event queued before 0.3 must be readable: %v", err)
+	}
+	if o := event.Order(); o == nil || o.CreatorCode != nil {
+		t.Errorf("order = %+v, want a nil CreatorCode", o)
+	}
+}
+
+func TestWebhookOrderEventWithABadCreatorCodeIsInvalidPayload(t *testing.T) {
+	for name, replacement := range map[string]string{
+		"a text":                   `"creatorCode":"LEAPLAY"`,
+		"an object without a name": `"creatorCode":{"code":"LEAPLAY"}`,
+	} {
+		body := strings.Replace(orderEventBody, `"creatorCode":null`, replacement, 1)
+		_, err := construct(body, signed(body))
+		if err == nil {
+			t.Errorf("%s: want an error", name)
+			continue
+		}
+		wantReason(t, err, gamecoin.ReasonInvalidPayload)
+	}
+}

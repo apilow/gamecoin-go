@@ -70,11 +70,13 @@ func TestABodyOfTheWrongShapeIsINVALIDRESPONSEWithTheHTTPStatusAndThePath(t *tes
 		{"order without pack", getOrder, strings.Replace(sampleOrder, `"pack":{"sku":"gems-500","name":"Bag of gems"},`, "", 1), "order.pack"},
 		{"order without paidAt", getOrder, strings.Replace(sampleOrder, `"paidAt":null,`, "", 1), "order.paidAt"},
 		{"order with a text amount", func(r *rig) error { _, err := r.client.Orders.Refund(ctx, "o1", nil); return err }, strings.Replace(sampleOrder, `"amountCents":499`, `"amountCents":"499"`, 1), "order.amountCents"},
-		{"order without creatorCode", getOrder, strings.Replace(sampleOrder, `,"creatorCode":null`, "", 1), "order.creatorCode"},
 		{"order with a broken creatorCode", getOrder, strings.Replace(sampleOrder, `"creatorCode":null`, `"creatorCode":{"code":"X"}`, 1), "order.creatorCode.creatorName"},
-		{"catalog without prelaunch", getCatalog, strings.Replace(sampleCatalog, `,"prelaunch":true`, "", 1), "catalog.prelaunch"},
-		{"catalog without launchAt", getCatalog, strings.Replace(sampleCatalog, `,"launchAt":"2026-12-01T09:00:00.000Z"`, "", 1), "catalog.launchAt"},
-		{"catalog pack without availability", getCatalog, strings.Replace(sampleCatalog, `,"availability":{"startsAt":"2026-12-01T09:00:00.000Z","endsAt":null,"remaining":42,"founder":true}`, "", 1), "catalog.packs[0].availability"},
+		{"order with a text creatorCode", getOrder, strings.Replace(sampleOrder, `"creatorCode":null`, `"creatorCode":"LEAPLAY"`, 1), "order.creatorCode"},
+		{"catalog with a text prelaunch", getCatalog, strings.Replace(sampleCatalog, `"prelaunch":true`, `"prelaunch":"yes"`, 1), "catalog.prelaunch"},
+		{"catalog with a null prelaunch", getCatalog, strings.Replace(sampleCatalog, `"prelaunch":true`, `"prelaunch":null`, 1), "catalog.prelaunch"},
+		{"catalog with an unreadable launchAt", getCatalog, strings.Replace(sampleCatalog, `"launchAt":"2026-12-01T09:00:00.000Z"`, `"launchAt":"tomorrow"`, 1), "catalog.launchAt"},
+		{"catalog with a numeric launchAt", getCatalog, strings.Replace(sampleCatalog, `"launchAt":"2026-12-01T09:00:00.000Z"`, `"launchAt":12`, 1), "catalog.launchAt"},
+		{"catalog pack with a text availability", getCatalog, strings.Replace(sampleCatalog, `"availability":{"startsAt":"2026-12-01T09:00:00.000Z","endsAt":null,"remaining":42,"founder":true}`, `"availability":"always"`, 1), "catalog.packs[0].availability"},
 		{"catalog pack availability without founder", getCatalog, strings.Replace(sampleCatalog, `,"founder":true`, "", 1), "catalog.packs[0].availability.founder"},
 		{"catalog pack availability with a bad date", getCatalog, strings.Replace(sampleCatalog, `"startsAt":"2026-12-01T09:00:00.000Z"`, `"startsAt":"soon"`, 1), "catalog.packs[0].availability.startsAt"},
 		{"catalog pack availability with a text stock", getCatalog, strings.Replace(sampleCatalog, `"remaining":42`, `"remaining":"42"`, 1), "catalog.packs[0].availability.remaining"},
@@ -283,5 +285,60 @@ func TestWhitespaceOnlyIDsAreTheServersBusinessOnlyEmptyOnesAreRejectedLocally(t
 
 	if got := r.f.only().RequestURI; got != "/api/v1/players/ext%3A%20" {
 		t.Errorf("request target = %s", got)
+	}
+}
+
+// SDK-SPEC section 10.1: the four fields added in v0.3 may be absent (an older server); present, they are still checked.
+func TestTheV03FieldsMayBeAbsentAndReadAsTheirDefault(t *testing.T) {
+	ctx := context.Background()
+
+	r := newRig(t, gamecoin.WithMaxRetries(0))
+	r.f.ok(strings.Replace(sampleOrder, `,"creatorCode":null`, "", 1))
+	order, err := r.client.Orders.Get(ctx, "o1")
+	if err != nil {
+		t.Fatalf("order without creatorCode: %v", err)
+	}
+	if order.CreatorCode != nil {
+		t.Errorf("CreatorCode = %+v, want nil", order.CreatorCode)
+	}
+
+	r = newRig(t, gamecoin.WithMaxRetries(0))
+	r.f.ok(strings.Replace(sampleCatalog, `,"availability":{"startsAt":"2026-12-01T09:00:00.000Z","endsAt":null,"remaining":42,"founder":true}`, "", 1))
+	catalog, err := r.client.Catalog.Get(ctx)
+	if err != nil {
+		t.Fatalf("pack without availability: %v", err)
+	}
+	if catalog.Packs[0].Availability != nil || !catalog.Prelaunch || catalog.LaunchAt == nil {
+		t.Errorf("availability = %+v, prelaunch = %v, launchAt = %v", catalog.Packs[0].Availability, catalog.Prelaunch, catalog.LaunchAt)
+	}
+
+	r = newRig(t, gamecoin.WithMaxRetries(0))
+	r.f.ok(strings.Replace(sampleCatalog, `,"prelaunch":true`, "", 1))
+	catalog, err = r.client.Catalog.Get(ctx)
+	if err != nil {
+		t.Fatalf("catalog without prelaunch: %v", err)
+	}
+	if catalog.Prelaunch || catalog.LaunchAt == nil || catalog.Packs[0].Availability == nil {
+		t.Errorf("prelaunch = %v, launchAt = %v, availability = %+v", catalog.Prelaunch, catalog.LaunchAt, catalog.Packs[0].Availability)
+	}
+
+	r = newRig(t, gamecoin.WithMaxRetries(0))
+	r.f.ok(strings.Replace(sampleCatalog, `,"launchAt":"2026-12-01T09:00:00.000Z"`, "", 1))
+	catalog, err = r.client.Catalog.Get(ctx)
+	if err != nil {
+		t.Fatalf("catalog without launchAt: %v", err)
+	}
+	if catalog.LaunchAt != nil || !catalog.Prelaunch {
+		t.Errorf("launchAt = %v, prelaunch = %v", catalog.LaunchAt, catalog.Prelaunch)
+	}
+
+	r = newRig(t, gamecoin.WithMaxRetries(0))
+	r.f.ok(`{"currencies":[],"items":[],"packs":[]}`)
+	catalog, err = r.client.Catalog.Get(ctx)
+	if err != nil {
+		t.Fatalf("catalog without any v0.3 field: %v", err)
+	}
+	if catalog.Prelaunch || catalog.LaunchAt != nil {
+		t.Errorf("prelaunch = %v, launchAt = %v", catalog.Prelaunch, catalog.LaunchAt)
 	}
 }

@@ -302,8 +302,9 @@ type Pack struct {
 	// MaxPerPlayer is the maximum number of purchases per player, nil for no limit.
 	MaxPerPlayer *int64 `json:"maxPerPlayer"`
 	// Availability is the sale window and the stock of the pack, nil for an ordinary pack (always on sale, no limit). The
-	// catalog also lists packs that are scheduled, ended or sold out: your shop decides what to show.
-	Availability *PackAvailability `json:"availability"`
+	// catalog also lists packs that are scheduled, ended or sold out: your shop decides what to show. A response without
+	// the field (a server older than 0.3) reads as nil.
+	Availability *PackAvailability `json:"availability" gamecoin:"optional"`
 }
 
 // Catalog lists the active currencies, items and packs of the game.
@@ -314,10 +315,11 @@ type Catalog struct {
 	Items []Item `json:"items"`
 	// Packs are the packs.
 	Packs []Pack `json:"packs"`
-	// Prelaunch is true while the game is not launched yet: a shop then shows pre-orders with LaunchAt.
-	Prelaunch bool `json:"prelaunch"`
-	// LaunchAt is the launch date of the game, nil when none is set.
-	LaunchAt *time.Time `json:"launchAt"`
+	// Prelaunch is true while the game is not launched yet: a shop then shows pre-orders with LaunchAt. A response without
+	// the field (a server older than 0.3) reads as false.
+	Prelaunch bool `json:"prelaunch" gamecoin:"optional"`
+	// LaunchAt is the launch date of the game, nil when none is set (or when the response has no such field).
+	LaunchAt *time.Time `json:"launchAt" gamecoin:"optional"`
 }
 
 // OrderPack is the pack an order was made for, as it was at the time of the purchase.
@@ -366,8 +368,9 @@ type Order struct {
 	FulfilledAt *time.Time `json:"fulfilledAt"`
 	// RefundedAt is the refund time, nil unless refunded.
 	RefundedAt *time.Time `json:"refundedAt"`
-	// CreatorCode is the creator code of the order, nil when the order was made without one.
-	CreatorCode *OrderCreatorCode `json:"creatorCode"`
+	// CreatorCode is the creator code of the order, nil when the order was made without one (or when the response, or the
+	// webhook event, has no such field: an event queued before 0.3).
+	CreatorCode *OrderCreatorCode `json:"creatorCode" gamecoin:"optional"`
 }
 
 // Checkout is the result of the creation of a checkout.

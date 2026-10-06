@@ -18,9 +18,11 @@ All notable changes to this module are documented here. The format follows
 - The error codes `CodePackNotAvailable` (`Details` `startsAt` and `endsAt`) and `CodePackSoldOut` (`Details` `packSku`).
 
 ### Changed
-- The new fields are part of the checked response shape: a response without `creatorCode` on an order, without
-  `availability` on a pack or without `prelaunch` and `launchAt` on the catalog is `INVALID_RESPONSE` (each one is
-  present, and `null` when it does not apply). The API sends them from this version on.
+- The four fields added in 0.3 are tolerated when absent (SDK-SPEC section 10.1): `Pack.Availability` reads as `nil`,
+  `Catalog.Prelaunch` as `false`, `Catalog.LaunchAt` as `nil` and `Order.CreatorCode` as `nil`, so an older server or a
+  webhook event queued before 0.3 stays readable. A field that is present with the wrong type or shape (an `availability`
+  without `founder`, a `creatorCode` without `creatorName`, an unreadable date) is still `INVALID_RESPONSE`
+  (`ReasonInvalidPayload` for a webhook event).
 - The version is `0.3.0` (`Version` and the user agent).
 
 ## [0.2.0] - Unreleased

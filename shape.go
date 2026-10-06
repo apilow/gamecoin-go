@@ -14,6 +14,10 @@ import (
 // target Go type against the decoded JSON: every field the type declares (those without "omitempty") must be present with
 // the right type, null being accepted for pointer fields only; extra fields in the response are ignored. Messages name a
 // path, never a value.
+//
+// Two kinds of field may be absent: those marked `omitempty` (absent or set, never null) and those marked
+// `gamecoin:"optional"` (the fields added in v0.3, SDK-SPEC section 10.1): absent reads as the zero value (nil or false),
+// but when present they are checked like any other field, so a wrong type or shape is still reported.
 
 var timeType = reflect.TypeOf(time.Time{})
 
@@ -162,10 +166,11 @@ func checkStruct(value any, t reflect.Type, path string) error {
 			name = field.Name
 		}
 		optional := strings.Contains(options, "omitempty")
+		tolerated := field.Tag.Get("gamecoin") == "optional"
 		child, present := object[name]
 		childPath := path + "." + name
 		switch {
-		case !present && optional:
+		case !present && (optional || tolerated):
 			continue
 		case !present:
 			return shapeError(childPath, field.Type, field.Type.Kind() == reflect.Ptr)

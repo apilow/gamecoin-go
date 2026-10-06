@@ -266,6 +266,10 @@ In test mode the payment is simulated: open `CheckoutURL` and press "Pay (simula
 The API ignores any other value without an error, and an empty `Locale` is not sent. A pending order that the API reuses
 takes the language of the latest request.
 
+A response that has no `availability`, `prelaunch`, `launchAt` or `creatorCode` field at all (a server older than 0.3, a
+webhook event queued before 0.3) is accepted: they read as `nil`, `false`, `nil` and `nil`. A field that is present with the
+wrong type or shape is `INVALID_RESPONSE` (`ReasonInvalidPayload` for a webhook event).
+
 `CreatorCode` is the creator code a player typed at checkout: the buyer then gets a bonus of free coins and the creator
 earns a commission, both cancelled on a refund or a chargeback. An empty `CreatorCode` is not sent. A refused code
 (unknown, disabled, not valid for the pack, or the creator's own player) is `VALIDATION_FAILED` with

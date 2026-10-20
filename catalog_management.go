@@ -7,8 +7,8 @@ import (
 )
 
 // Catalog management: Client.Currencies, Client.Items and Client.Packs create, change and archive the catalog, the way a
-// payment platform manages its products and prices. The catalog is shared by the test and live environments of the game: a
-// resource created with a test key exists for live keys too.
+// payment platform manages its products and prices. Each environment has its own catalog: a
+// resource created with a test key exists in test only.
 //
 // A code or a sku is the natural key of a create: a taken one (even by an archived resource) is CodeConflict with
 // Details["fieldErrors"] holding "sku": ["SKU_TAKEN"] (or "code": ["CODE_TAKEN"]), so a create has no idempotency key and the

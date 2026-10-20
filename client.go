@@ -32,8 +32,8 @@ type Client struct {
 	Codes *CodesService
 	// Orders reads and refunds orders.
 	Orders *OrdersService
-	// Currencies manages the currencies of the game: create, change, archive, list. The catalog is shared by the test and
-	// live environments.
+	// Currencies manages the currencies of the game: create, change, archive, list. Each environment has its own
+	// catalog (the key decides which one).
 	Currencies *CurrenciesService
 	// Items manages the items of the game.
 	Items *ItemsService

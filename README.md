@@ -235,8 +235,7 @@ beyond the limit. `Quantity` is optional: its zero value means 1.
 `Currencies`, `Items` and `Packs` create, change and archive the catalog, the way a payment platform manages its products and
 prices. Each has `Create`, `Get`, `Update`, `Archive` and `List`.
 
-> The catalog is shared by the test and live environments of the game: a pack created with a test key exists for live keys
-> too. Create a new pack as a draft (the default) and turn it on with `Status: gamecoin.PackActive` when it is ready.
+> Each environment has its own catalog: the key decides which one you change, and a pack created with a test key exists in test only. Create a new pack as a draft (the default) and turn it on with `Status: gamecoin.PackActive` when it is ready.
 
 ```go
 _, err = client.Currencies.Create(ctx, gamecoin.CreateCurrencyParams{Code: "rubies", Name: "Rubies"})

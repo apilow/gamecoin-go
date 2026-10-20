@@ -361,3 +361,142 @@ func TestIntegrationServerSideValidationErrorsCarryFieldErrors(t *testing.T) {
 		t.Errorf("Details = %v", gcErr.Details)
 	}
 }
+
+func TestIntegrationCatalogManagement(t *testing.T) {
+	client := sandbox(t)
+	ctx := context.Background()
+	// A fresh suffix for every run: a code or a sku is never reusable, even once archived.
+	suffix := uniqueID("")[:10]
+	code, itemSKU, packSKU := "ruby_"+suffix, "elixir-"+suffix, "mega-"+suffix
+
+	currency, err := client.Currencies.Create(ctx, gamecoin.CreateCurrencyParams{Code: code, Name: "Ruby", Purchasable: gamecoin.Ptr(true)})
+	mustNot(t, "create currency", err)
+	if currency.Status != gamecoin.CatalogActive || !currency.Purchasable {
+		t.Errorf("currency = %+v", currency)
+	}
+	renamed, err := client.Currencies.Update(ctx, code, &gamecoin.UpdateCurrencyParams{Name: gamecoin.Ptr("Red ruby")})
+	mustNot(t, "update currency", err)
+	if renamed.Name != "Red ruby" {
+		t.Errorf("renamed = %+v", renamed)
+	}
+
+	item, err := client.Items.Create(ctx, gamecoin.CreateItemParams{
+		SKU: itemSKU, Name: "Elixir", Type: gamecoin.ItemConsumable, Price: &gamecoin.Price{Currency: code, Amount: 15},
+		ClientPurchasable: true, Metadata: map[string]string{"heal": "30"},
+	})
+	mustNot(t, "create item", err)
+	if item.Price == nil || item.Price.Amount != 15 || item.MaxOwned != nil {
+		t.Errorf("item = %+v", item)
+	}
+	repriced, err := client.Items.Update(ctx, itemSKU, &gamecoin.UpdateItemParams{Price: &gamecoin.Price{Currency: code, Amount: 25}})
+	mustNot(t, "update item", err)
+	if repriced.Price == nil || repriced.Price.Amount != 25 {
+		t.Errorf("repriced = %+v", repriced)
+	}
+
+	pack, err := client.Packs.Create(ctx, gamecoin.CreatePackParams{
+		SKU: packSKU, Name: "Mega pack", PriceCents: 999,
+		Grants: []gamecoin.PackGrant{{Currency: code, Amount: 1200, Bonus: 100}},
+		Items:  []gamecoin.PackItem{{SKU: itemSKU, Quantity: 2}},
+		Badge:  "best_value",
+	})
+	mustNot(t, "create pack", err)
+	if pack.Status != gamecoin.PackDraft || pack.Availability != nil {
+		t.Errorf("pack = %+v", pack)
+	}
+
+	starts := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	live, err := client.Packs.Update(ctx, packSKU, &gamecoin.UpdatePackParams{
+		PriceCents:   gamecoin.Ptr(int64(1099)),
+		Status:       gamecoin.PackActive,
+		Availability: &gamecoin.PackAvailabilityParams{StartsAt: &starts, Stock: gamecoin.Ptr(int64(50)), Founder: true},
+	})
+	mustNot(t, "activate pack", err)
+	a := live.Availability
+	if live.Status != gamecoin.PackActive || a == nil || a.StartsAt == nil || !a.StartsAt.Equal(starts) || a.EndsAt != nil || a.Stock == nil || *a.Stock != 50 || !a.Founder || a.Sold != 0 {
+		t.Errorf("live = %+v, availability %+v", live, a)
+	}
+	catalog, err := client.Catalog.Get(ctx)
+	mustNot(t, "catalog", err)
+	var public *gamecoin.Pack
+	for i := range catalog.Packs {
+		if catalog.Packs[i].SKU == packSKU {
+			public = &catalog.Packs[i]
+		}
+	}
+	if public == nil || public.Availability == nil || public.Availability.Remaining == nil || *public.Availability.Remaining != 50 {
+		t.Errorf("public pack = %+v", public)
+	}
+
+	// Archiving goes top-down: a pack, then the item it holds, then the currency.
+	for _, step := range []struct {
+		name string
+		call func() (gamecoin.CatalogStatus, gamecoin.PackStatus, error)
+	}{
+		{"archive pack", func() (gamecoin.CatalogStatus, gamecoin.PackStatus, error) {
+			p, err := client.Packs.Archive(ctx, packSKU)
+			if err != nil {
+				return "", "", err
+			}
+			return "", p.Status, nil
+		}},
+		{"archive item", func() (gamecoin.CatalogStatus, gamecoin.PackStatus, error) {
+			i, err := client.Items.Archive(ctx, itemSKU)
+			if err != nil {
+				return "", "", err
+			}
+			return i.Status, "", nil
+		}},
+		{"archive currency", func() (gamecoin.CatalogStatus, gamecoin.PackStatus, error) {
+			c, err := client.Currencies.Archive(ctx, code)
+			if err != nil {
+				return "", "", err
+			}
+			return c.Status, "", nil
+		}},
+		{"archive currency again", func() (gamecoin.CatalogStatus, gamecoin.PackStatus, error) {
+			c, err := client.Currencies.Archive(ctx, code)
+			if err != nil {
+				return "", "", err
+			}
+			return c.Status, "", nil
+		}},
+	} {
+		status, packStatus, err := step.call()
+		mustNot(t, step.name, err)
+		if status != "" && status != gamecoin.CatalogArchived || packStatus != "" && packStatus != gamecoin.PackArchived {
+			t.Errorf("%s: status %q / %q", step.name, status, packStatus)
+		}
+	}
+
+	hasCode := func(list []gamecoin.ManagedCurrency) bool {
+		for _, c := range list {
+			if c.Code == code {
+				return true
+			}
+		}
+		return false
+	}
+	active, err := client.Currencies.List(ctx, nil)
+	mustNot(t, "list active", err)
+	all, err := client.Currencies.List(ctx, &gamecoin.ListParams{IncludeArchived: true})
+	mustNot(t, "list all", err)
+	if hasCode(active) || !hasCode(all) {
+		t.Errorf("active has the currency: %v, all has it: %v", hasCode(active), hasCode(all))
+	}
+
+	_, err = client.Currencies.Create(ctx, gamecoin.CreateCurrencyParams{Code: "gems", Name: "Again"})
+	taken := expectCode(t, "taken code", err, gamecoin.CodeConflict, 409)
+	if _, ok := taken.Details["fieldErrors"]; !ok {
+		t.Errorf("Details = %v", taken.Details)
+	}
+	_, err = client.Currencies.Archive(ctx, "gems")
+	blocked := expectCode(t, "blocked archive", err, gamecoin.CodeConflict, 409)
+	if _, ok := blocked.Details["blockedBy"]; !ok {
+		t.Errorf("Details = %v", blocked.Details)
+	}
+	_, err = client.Packs.Create(ctx, gamecoin.CreatePackParams{SKU: "empty-" + suffix, Name: "Empty", PriceCents: 500})
+	expectCode(t, "empty pack", err, gamecoin.CodeValidationFailed, 400)
+	_, err = client.Items.Get(ctx, "nope-"+suffix)
+	expectCode(t, "unknown sku", err, gamecoin.CodeNotFound, 404)
+}

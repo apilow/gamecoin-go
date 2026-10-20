@@ -32,6 +32,12 @@ func shapeRoot(out any) string {
 		return "wallet"
 	case *Order:
 		return "order"
+	case *ManagedCurrency:
+		return "currency"
+	case *ManagedItem:
+		return "item"
+	case *ManagedPack:
+		return "pack"
 	case *Redemption:
 		return "redemption"
 	}

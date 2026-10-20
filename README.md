@@ -230,6 +230,45 @@ if catalog.Prelaunch { // the game is not launched yet: show pre-orders with the
 `Inventory.Consume` returns the item even when it reaches 0. A durable item with `MaxOwned` fails with `LIMIT_REACHED`
 beyond the limit. `Quantity` is optional: its zero value means 1.
 
+## Manage the catalog
+
+`Currencies`, `Items` and `Packs` create, change and archive the catalog, the way a payment platform manages its products and
+prices. Each has `Create`, `Get`, `Update`, `Archive` and `List`.
+
+> The catalog is shared by the test and live environments of the game: a pack created with a test key exists for live keys
+> too. Create a new pack as a draft (the default) and turn it on with `Status: gamecoin.PackActive` when it is ready.
+
+```go
+_, err = client.Currencies.Create(ctx, gamecoin.CreateCurrencyParams{Code: "rubies", Name: "Rubies"})
+_, err = client.Items.Create(ctx, gamecoin.CreateItemParams{
+	SKU: "elixir", Name: "Elixir", Type: gamecoin.ItemConsumable, Price: &gamecoin.Price{Currency: "gems", Amount: 15},
+})
+
+pack, err := client.Packs.Create(ctx, gamecoin.CreatePackParams{
+	SKU: "mega", Name: "Mega pack", PriceCents: 999,
+	Grants: []gamecoin.PackGrant{{Currency: "gems", Amount: 1200, Bonus: 100}},
+	Items:  []gamecoin.PackItem{{SKU: "elixir", Quantity: 2}},
+})
+fmt.Println(pack.Status) // draft
+
+start := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+_, err = client.Packs.Update(ctx, "mega", &gamecoin.UpdatePackParams{
+	PriceCents:   gamecoin.Ptr(int64(1099)),
+	Availability: &gamecoin.PackAvailabilityParams{StartsAt: &start, Stock: gamecoin.Ptr(int64(500)), Founder: true}, // replaces the whole availability
+	Status:       gamecoin.PackActive,
+})
+_, err = client.Items.Update(ctx, "elixir", &gamecoin.UpdateItemParams{Clear: []gamecoin.ItemField{gamecoin.ItemFieldPrice}}) // erase the price
+_, err = client.Packs.Archive(ctx, "mega") // nothing is deleted
+everything, err := client.Packs.List(ctx, &gamecoin.ListParams{IncludeArchived: true})
+```
+
+A nil field of an `Update` is left unchanged; to erase a description, a price, a badge or a limit, list it in `Clear`. The
+identifiers (`Code`, `SKU`) and the `Type` of an item are final, so `Update` has no field for them. A taken identifier is
+`CodeConflict` with `Details["fieldErrors"]` holding `"sku": ["SKU_TAKEN"]` (`"code": ["CODE_TAKEN"]` for a currency); an invalid
+pack is `CodeValidationFailed` with the faulty lines in `Details["fieldErrors"]`; archiving something that an active pack still
+uses is `CodeConflict` with `Details["blockedBy"]`. A create has no idempotency key (the identifier is its natural key), so it
+is retried on 429 only: after a network error, a timeout or a 5xx, read the resource back with `Get` before you try again.
+
 ## Checkout, orders and refunds
 
 A **checkout** sells a *pack* for real money: you create an order, send the player to `CheckoutURL`, and the coins and
@@ -508,7 +547,7 @@ GAMECOIN_SECRET_KEY=gc_sk_test_… GAMECOIN_BASE_URL=http://localhost:3400 go te
 
 ## Status
 
-Pre-release (`0.3.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
+Pre-release (`0.4.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
 module path and the repository name may change before the first public release.
 
 ## Licence

@@ -4,6 +4,28 @@ All notable changes to this module are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - Unreleased
+
+Catalog management: create, change and archive currencies, items and packs.
+
+### Added
+- `client.Currencies`, `client.Items` and `client.Packs`, each with `Create`, `Get`, `Update`, `Archive` and `List`: the catalog
+  management API (`/currencies`, `/items`, `/packs`). Twelve services and thirty-two calls in all.
+- Results `ManagedCurrency`, `ManagedItem` and `ManagedPack` (the catalog objects plus `Status`, `CreatedAt` and `UpdatedAt`; a
+  pack also has `SortOrder` and `Availability` as `ManagedPackAvailability` with `StartsAt`, `EndsAt`, `Stock`, `Founder` and
+  `Sold`), and the `CatalogStatus` and `PackStatus` values.
+- `Update` follows the `Players.Upsert` convention: a nil field is unchanged, and a `Clear` list erases a description, a price,
+  a badge or a limit. `Grants`, `Items`, `Metadata` and `Availability` replace the old value as a whole.
+- `Archive` returns the archived resource; `List` leaves archived ones out unless `&ListParams{IncludeArchived: true}`.
+- `gamecoin.Ptr(v)`, a generic helper that returns a pointer to a copy of `v`, for the optional fields of the params.
+
+### Notes
+- The catalog is shared by the test and live environments of the game: a resource created with a test key exists for live keys
+  too.
+- A create has no idempotency key (the code or sku is its natural key; a taken one is `CONFLICT` with `SKU_TAKEN` or
+  `CODE_TAKEN`), so it is retried on 429 only, like `Orders.Refund`. Updates, archives and reads follow the usual rules.
+- `Version` and the user agent are `0.4.0`.
+
 ## [0.3.0] - Unreleased
 
 ### Added

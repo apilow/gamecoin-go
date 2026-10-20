@@ -32,6 +32,13 @@ type Client struct {
 	Codes *CodesService
 	// Orders reads and refunds orders.
 	Orders *OrdersService
+	// Currencies manages the currencies of the game: create, change, archive, list. The catalog is shared by the test and
+	// live environments.
+	Currencies *CurrenciesService
+	// Items manages the items of the game.
+	Items *ItemsService
+	// Packs manages the packs of the game.
+	Packs *PacksService
 
 	core        *core
 	environment string
@@ -103,6 +110,9 @@ func New(secretKey string, opts ...Option) (*Client, error) {
 		Checkouts:   &CheckoutsService{c},
 		Codes:       &CodesService{c},
 		Orders:      &OrdersService{c},
+		Currencies:  &CurrenciesService{c},
+		Items:       &ItemsService{c},
+		Packs:       &PacksService{c},
 		core:        c,
 		environment: environment,
 		maskedKey:   maskedKey,

@@ -1,7 +1,7 @@
 # gamecoin-go
 
 Server SDK for **Apilow GameCoin**, the bank of your game: virtual currencies, inventory and sales, behind one API. Use
-it from your game backend to grant and spend coins, manage items, and sell packs with real money.
+it from your game backend to grant and spend coins, manage items, and sell packs with real money. Full documentation: [gamecoin.apilow.com/docs/sdk/go](https://gamecoin.apilow.com/docs/sdk/go).
 
 - Go 1.21 and later, **standard library only** (`net/http`, `encoding/json`, `crypto/rand`).
 - `context.Context` first in every call, typed structs, `time.Time` dates, a single `*gamecoin.Error` type.
@@ -298,7 +298,7 @@ if gamecoin.IsCode(err, gamecoin.CodeConflict) {
 }
 ```
 
-In test mode the payment is simulated: open `CheckoutURL` and press "Pay (simulated)".
+In test mode the payment is simulated: open `CheckoutURL` and press "Pay (simulated)". With a live key the page takes a real payment.
 
 `Locale` (`"fr"`, `"en"` or `"nl"`) is the language of the hosted payment page, the receipt and the e-mails of the order.
 The API ignores any other value without an error, and an empty `Locale` is not sent. A pending order that the API reuses
@@ -546,7 +546,7 @@ GAMECOIN_SECRET_KEY=gc_sk_test_… GAMECOIN_BASE_URL=http://localhost:3400 go te
 
 ## Status
 
-Pre-release (`0.4.0`). The API runs in **test mode with simulated payments**; real payments are not available yet. The
+Pre-release (`0.4.0`). The API has a **test environment** (simulated payments) and a **live environment** (real payments), reserved for verified studios. The
 module path and the repository name may change before the first public release.
 
 ## Licence
